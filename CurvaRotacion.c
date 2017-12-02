@@ -38,7 +38,7 @@ char greeting2[60];
 fscanf(datos,"%s %s \n", &greeting1,&greeting2);
 for (i=0;i<nx-1;i++){
 	fscanf(datos,"%lf %lf\n", &R[i],&V[i]);
-	printf("%lf \n",x[i]);
+	printf("%lf \n",R[i]);
 }
 fclose(datos);
 
