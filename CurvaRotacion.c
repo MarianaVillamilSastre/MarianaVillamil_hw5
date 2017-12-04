@@ -1,110 +1,113 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
+#define nx 300
 
-int leeDatos(void);
-double likelihood(double*V,double*V2);
-void Caminata(double *V, double *V2, double*R);
-void velocidad(double *R,double*Mb,double *Md, double*M);
+double likelihood(double expe[nx], double mymodel[nx])
+{
+	int i;
+	double chi=0;
+	double chi_cuadrado;
+	double promedio=100;
+	for (i=0;i<nx;i++)
+	{
+		chi = chi+ pow((expe[i]-mymodel[i]) / promedio,2);
+		chi_cuadrado=exp(-(0.5)*chi);
+	}
+	return chi_cuadrado;
+
+}
+
+double distribucion(double x, double y)
+{
+  double m = drand48();
+  double p = drand48();
+  return ((sqrt(-2.0*log(m))*cos(2*3.131415*p))*y +x);
+
+}
+
+
+double*velocidad(double R[nx],double Mb,double Md, double M)
+	{
+	float b_b=0.2497;
+	float b_d=5.16;
+	float a_d=0.3105;
+	float a_h=64.3;	
+	double*V2=malloc(nx*sizeof(double));
+	int i;
+	for (i=0;i<nx;i++){
+	V2[i]=(sqrt(Mb) * R[i] / pow((pow(R[i],2.0)+pow(b_b,2.0)), 0.75)) + (sqrt(Md) * R[i] / pow((pow(R[i],2.0)+pow(b_d+a_d,2.0)), 0.75)) + (sqrt(M) / pow((pow(R[i],2.0)+pow(a_h,2.0)), 0.25));}
+		return V2;
+	}
+
+
+
 
 int main(void){
 
-	leeDatos();
-	likelihood(double*V,double*V2);
-	velocidad(double *R,double*Mb,double *Md, double*M);
-	Caminata(double *V, double *V2, double*R);
-	return 0;
-}
-
-float b_b=0.2497;
-float b_d=5.16;
-float a_d=0.3105;
-float a_h=64.3;
-float M=2.325E7;
-int G=1;
-int nx=300;
-
-int leeDatos(void){
-
-double*x=malloc(nx*sizeof(double));
-double*y=malloc(nx*sizeof(double));
+double*r_expe=malloc(nx*sizeof(double));
+double*v_expe=malloc(nx*sizeof(double));
 
 FILE*datos=fopen("RadialVelocities.dat", "r");
 int i;
-
-
 char greeting1[60];
 char greeting2[60];
 fscanf(datos,"%s %s \n", &greeting1,&greeting2);
 for (i=0;i<nx-1;i++){
-	fscanf(datos,"%lf %lf\n", &R[i],&V[i]);
-	printf("%lf \n",R[i]);
+	fscanf(datos,"%lf %lf\n", &r_expe[i],&v_expe[i]);
+	
 }
 fclose(datos);
 
-}
+double pasos=20000;
 
-double likelihood(double*V,double*V2)
-	{
-		
-		double j;
-		double promedio=0;
-		for(i=0;i<nx;i++)
-		{
-			chi_cuadrado=0.5*pow(sum(V[i]-V2[i]),2);
-			j=j+chi_cuadrado;
-			promedio=promedio+1;
-		}
-			chi=exp(-j/promedio);
-			return chi;
-	}
+	double*Mb=malloc(pasos*sizeof(double));
+	double*Md=malloc(pasos*sizeof(double));
+	double*M=malloc(pasos*sizeof(double));
+	double*L=malloc(pasos*sizeof(double));
+	double*V2_inicial=malloc(nx*sizeof(double));
+	double*v_prueba=malloc(nx*sizeof(double));
 
-void Caminata(double *V, double *V2, double*R)
-{
-	double*Mb=malloc(nx*sizeof(double));
-	double*Md=malloc(nx*sizeof(double));
-	double*M=malloc(nx*sizeof(double));
-	double*L=malloc(nx*sizeof(double));
+	Mb[0]=drand48();
+	Md[0]=drand48();
+	M[0]=drand48();
 
-	Mb[0]=1E14*drand48()-1E7;
-	Md[0]=1E14*drand48()-1E7;
-	M[0]=1E14*drand48()-1E7;
-
-	V2_inicial=velocidad(R[0]);
-	L[0]=likelihood(V2_inicial,chi);
+	V2_inicial=velocidad(r_expe,Mb[0],Md[0],M[0]);
+	L[0]=likelihood(v_expe,V2_inicial);
 	
 	for(i=0;i<nx;i++)
 	{
 
-	Mb_prime=1E14*drand48()-1E7;
-	Md_prime=1E14*drand48()-1E7;
-	M_prime=1E14*drand48()-1E7;
+	double Mb_prueba=distribucion(Mb[i],4);
+	double Md_prueba=distribucion(Md[i],400);
+	double M_prueba=distribucion(M[i],400);
 	
-	V2_inicial=velocidad(R[i],Mb[i],Md[i],M[i]);
-	V_prime=velocidad(R[i],Mb_prime,Md_prime,M_prime);
+	V2_inicial=velocidad(r_expe,Mb[i],Md[i],M[i]);
+	v_prueba=velocidad(r_expe,Mb_prueba,Md_prueba,M_prueba);
 	
-	L_prime=likelihood(V[i],V_prime[i]);
-	L_inicial=likelihood(V[i],V2_inicial[i]);
+	double L_prueba=likelihood(v_expe,v_prueba);
+	double L_inicial=likelihood(v_expe,V2_inicial);
 
 	double alpha;
-	alpha=L_prime/L_inicial;
+	alpha=L_prueba/L_inicial;
 	if(alpha >=1.0)
         {
-            Mb[i+1] = Mb_prime[i];
-            Md[i+1] = Md_prime[i];
-            M[i+1] = M_prime[i];
-	    L[i+1] = L_prime[i];
+            Mb[i+1] = Mb_prueba;
+            Md[i+1] = Md_prueba;
+            M[i+1] = M_prueba;
+	    L[i+1] = L_prueba;
         }
         else
         {
 
 	double beta;
+	beta=drand48();
 	if (beta<=alpha)
 	{
-            Mb[i+1] = Mb_prime[i];
-            Md[i+1] = Md_prime[i];
-            M[i+1] = M_prime[i];
-	    L[i+1] = L_prime[i];
+            Mb[i+1] = Mb_prueba;
+            Md[i+1] = Md_prueba;
+            M[i+1] = M_prueba;
+	    L[i+1] = L_prueba;
 
 	}
 	else
@@ -112,27 +115,30 @@ void Caminata(double *V, double *V2, double*R)
             Mb[i+1] = Mb[i];
             Md[i+1] = Md[i];
             M[i+1] = M[i];
-	    L[i+1] = [i];
+	    L[i+1] = L[i];
 	}
 }
 
-}}
-
-double Mb=1E14*drand48()-1E7;
-double Md=1E14*drand48()-1E7;
-double M=1E14*drand48()-1E7;
-
-void velocidad(double *R,double*Mb,double *Md, double*M)
-	{
-	double*V2=malloc(nx*sizeof(double));
-		
-	for (i=0;i<nx;i++){
-	V2[i]=(((sqrt(M_b))*R[i])/pow(pow(R[i],2) + pow(b_b,2)),3/4) + (((sqrt(M_d))*R[i])/pow(pow(R[i],2) + pow(b_d + a_d,2)),3/4) + ((sqrt(M_h))/pow(pow(R[i],2) + pow(a_h,2)),1/4);}
-		return V2;
-	}
+}
 
 
+  double chi_max =L[0];
+  int h = 0;
+  for(i=1; i<pasos; i++){
+    if(L[i] >= chi_max){
+      chi_max = L[i];
+      h = i;
+    }
+  }
 
+ FILE *myfile= fopen("Datos.dat","w");
+fprintf(myfile, "%f %f %f", Mb[h], Md[h], M[h]);
+  printf("El valor de Mb es: %lf\n", Mb[h]);
+  printf("El valor de Md es: %lf\n", Md[h]);
+  printf("El valor de Mh es: %lf\n", M[h]);
+   
+  return 0;
+}
 
 
 
